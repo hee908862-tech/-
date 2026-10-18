@@ -68,14 +68,15 @@ async def socket(request):
                     if seat!=0 or not r['started']:continue
                     # The public view is scrubbed by the host and private ability HTML is sent ONLY to current actor.
                     public=data.get('public',{})
+                    cue=data.get('cue',{}) if isinstance(data.get('cue',{}),dict) else {}
                     raw=json.dumps(public,ensure_ascii=False)
                     if len(raw)>140_000:continue
                     actor=int(data.get('actor',-1));private=str(data.get('private',''))[:8_000]
-                    r['snapshot']={'public':public,'actor':actor,'private':private}
+                    r['snapshot']={'public':public,'actor':actor,'private':private,'cue':cue}
                     for s,p in list(r['members'].items()):
                         if s==0:continue
                         await send(p['ws'],{'type':'snapshot','public':public,'actor':actor,
-                                            'private':private if s==actor else ''})
+                                            'private':private if s==actor else '', 'cue':cue})
                 elif typ=='action':
                     if seat==0 or not r['started']:continue
                     a=data.get('action',{})
