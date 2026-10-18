@@ -1,6 +1,6 @@
 'use strict';
 // Online extension for original v9. The room owner's browser runs the authoritative game engine.
-const Online={role:null,seat:null,code:null,ws:null,roster:[],max:4,started:false,seats:[],sending:false,queued:false,disconnected:false};
+const Online={role:null,seat:null,code:null,ws:null,roster:[],max:4,started:false,seats:[],sending:false,queued:false,disconnected:false,observer:null,lastCue:'',lastPhase:'',lastActor:-1,guestAudioReady:false};
 const onlineEl=id=>document.getElementById(id);
 function onlineStatus(message){onlineEl('onlineStatus').textContent=message}
 function onlineVisible(show){onlineEl('onlineSection').classList.toggle('hide',!show);onlineEl('setup').classList.toggle('hide',show)}
@@ -28,6 +28,8 @@ function onlineConnect(type){
  Online.ws=sock;Online.role=type==='create'?'host':'guest';Online.max=max;
  onlineStatus('서버에 연결 중입니다…');
  sock.onopen=()=>onlineSend({type,name,...(type==='create'?{max}:{code})});
+ // Joining is a user gesture. Resume audio on this device; browsers may still require a second tap.
+ try{ensureAudio(); Online.guestAudioReady=!!audioCtx&&audioCtx.state==='running'}catch(e){}
  sock.onmessage=evt=>{
   let d;try{d=JSON.parse(evt.data)}catch{return}
   if(d.type==='welcome'){
@@ -75,16 +77,18 @@ function onlineSync(){
  if(Online.role!=='host'||!Online.started||!P.length)return;
  const gameClone=onlineEl('game').cloneNode(true),abilities=gameClone.querySelector('#abilities');
  if(abilities)abilities.innerHTML='<div class="concealed-skills"><div class="conceal-lock">🔒</div><strong>현재 플레이어의 능력은 비공개입니다</strong></div>';
- const voteClone=onlineEl('powerVote').cloneNode(true),modalClone=onlineEl('modal').cloneNode(true);
- const publicData={game:onlineScrub(gameClone),vote:onlineScrub(voteClone),modal:onlineScrub(modalClone)};
+ const voteClone=onlineEl('powerVote').cloneNode(true);
+ // Settings, help and audio belong to EACH device, not the shared match.
+ const publicData={game:onlineScrub(gameClone),vote:onlineScrub(voteClone)};
+ const cue={phase,actor:idx,throwText:onlineEl('throwResult')?.textContent||'',sticks:onlineEl('sticks')?.innerHTML||'',message:onlineEl('message')?.textContent||''};
  const actor=Online.seats[idx]??-1;
- onlineSend({type:'snapshot',actor,private:onlinePrivateHtml(),public:publicData});
+ onlineSend({type:'snapshot',actor,private:onlinePrivateHtml(),public:publicData,cue});
 }
 function onlineScheduleSync(){if(Online.queued)return;Online.queued=true;setTimeout(()=>{Online.queued=false;onlineSync()},125)}
 function onlineObserve(){
  if(Online.role!=='host')return;
  const o=new MutationObserver(onlineScheduleSync);
- for(const id of ['game','powerVote','modal'])o.observe(onlineEl(id),{subtree:true,childList:true,characterData:true,attributes:true});
+ for(const id of ['game','powerVote'])o.observe(onlineEl(id),{subtree:true,childList:true,characterData:true,attributes:true});
  Online.observer=o;
  // do not flood network with unused poll intervals
 }
@@ -92,13 +96,13 @@ function onlineRender(d){
  Online.started=true;
  onlineEl('onlineHeaderButton').classList.add('hide');
  onlineEl('onlineSection').classList.add('hide');onlineEl('setup').classList.add('hide');
- let game=onlineEl('game'),vote=onlineEl('powerVote'),modal=onlineEl('modal');
+ let game=onlineEl('game'),vote=onlineEl('powerVote');
  const sanitize=html=>{const template=document.createElement('template');template.innerHTML=html;const root=template.content.firstElementChild;if(root){scrubInlineHandlers(root);root.querySelectorAll('script').forEach(el=>el.remove());}return root};
  let next=sanitize(d.public.game);
  if(!next)return;
  game.replaceWith(next);
  next=sanitize(d.public.vote);if(next)vote.replaceWith(next);
- next=sanitize(d.public.modal);if(next)modal.replaceWith(next);
+ // Never mirror the host's settings/help modal into another player's browser.
  const actor=d.actor===Online.seat;
  if(actor&&d.private){const ability=onlineEl('abilities');if(ability)ability.innerHTML=d.private}
  // Every person may vote only for their own seat, even if all votes are visible.
@@ -108,9 +112,46 @@ function onlineRender(d){
  });
  document.body.classList.toggle('net-spectator',!actor);
  document.body.classList.add('net-guest');
+ onlineGuestAudio(d);
+ onlineMobileFit();
  onlineEl('exitBtn').classList.remove('hide');onlineEl('exitBtn').textContent='🚪 온라인 게임 나가기';
  onlineEl('exitBtn').onclick=()=>{if(confirm('방에서 나가시겠습니까?'))location.reload()};
 }
+
+// Audio is deliberately NOT streamed from the host: each connected browser synthesizes its own sound.
+// The host sends public event cues only. The actual secret cards are never included.
+function onlineGuestAudio(d){
+ if(Online.role!=='guest'||!Online.started)return;
+ const cue=d.cue||{};
+ if(!Online.guestAudioReady){
+  let chip=document.getElementById('netAudioUnlock');
+  if(!chip){chip=document.createElement('button');chip.id='netAudioUnlock';chip.textContent='🔊 소리 켜기';chip.type='button';
+   chip.style.cssText='position:fixed;z-index:31;right:10px;bottom:16px;background:#76593f;color:#fff;border:1px solid #d4ae7f;border-radius:40px;padding:11px 16px;box-shadow:0 4px 15px #0004;font-weight:bold';
+   chip.onclick=()=>{ensureAudio();Online.guestAudioReady=!!audioCtx&&audioCtx.state==='running';if(Online.guestAudioReady)chip.remove()};document.body.appendChild(chip)}
+ } else document.getElementById('netAudioUnlock')?.remove();
+ const phaseNow=cue.phase||'';
+ const result=cue.throwText||'';
+ const cueKey=JSON.stringify([cue.actor,phaseNow,result,cue.sticks]);
+ if(Online.lastCue&&cueKey!==Online.lastCue){
+   if(phaseNow==='rolling')soundFx('throw');
+   if(result&&result!=='윷을 던져 주세요'&&result!==Online.lastThrow){
+    const name=result.split(/[ (]/)[0];if(['도','개','걸','윷','모','빽도','낙'].includes(name)){soundFx('step');announceRoll(name)}
+   }
+   if(phaseNow==='end'&&Online.lastPhase!=='end')soundFx('turn');
+   if(cue.message&&/잡았|잡기 성공|상대 말을 잡/.test(cue.message)&&cue.message!==Online.lastMessage)soundFx('clap');
+   if(cue.message&&/골인/.test(cue.message)&&cue.message!==Online.lastMessage)soundFx('finish');
+ }
+ Online.lastCue=cueKey;Online.lastThrow=result;Online.lastPhase=phaseNow;Online.lastMessage=cue.message||'';
+}
+// The game occupies the available mobile visual viewport; viewport chrome can change on scroll.
+function onlineMobileFit(){
+ if(!window.matchMedia('(max-width:780px)').matches)return;
+ const h=window.visualViewport?.height||window.innerHeight;
+ document.documentElement.style.setProperty('--net-visible-height',Math.round(h)+'px');
+}
+window.visualViewport?.addEventListener('resize',onlineMobileFit);
+window.addEventListener('orientationchange',onlineMobileFit);
+
 function onlineGetAction(target){
  const vote=target.closest('#powerVote [data-voter]');if(vote)return{kind:'vote',index:+vote.dataset.voter};
  const ability=target.closest('#abilities [data-net-ability]');if(ability)return{kind:'ability',power:ability.dataset.netAbility};
@@ -118,13 +159,39 @@ function onlineGetAction(target){
  const pick=target.closest('#pieceList button[id^="pick"]');if(pick)return{kind:'pick',index:+pick.id.slice(4)};
  const piece=target.closest('#pieceList button[id^="piece"]');if(piece)return{kind:'piece',index:+piece.id.slice(5)};
  const pb=target.closest('#board .piece-group');if(pb)return{kind:'boardPiece',owner:+pb.dataset.owner,piece:+pb.dataset.piece};
- const dest=target.closest('#board .destination-hit');if(dest)return{kind:'destination'};
+ // A destination has three valid tap surfaces: glowing ring, label, and nearby board area.
+ // On mobile the SVG label was previously pointer-events:none, so tapping text
+ // never produced a remote action. Resolve taps by the *visible target position*.
+ const board=target.closest('#board');
+ if(board){
+  const targetEl=board.querySelector('.destination-hit[data-dest]');
+  if(targetEl){
+   const explicit=target.closest('.destination-hit,.destination-label');
+   if(explicit)return{kind:'destination',pos:String(targetEl.dataset.dest)};
+   // Convert browser touch/click coordinates to SVG coordinate space; works
+   // with responsive viewBox scaling, both portrait and landscape screens.
+   const svgPoint=board.createSVGPoint();
+   svgPoint.x=window.__yutLastClickX??0;svgPoint.y=window.__yutLastClickY??0;
+   const ctm=board.getScreenCTM();
+   if(ctm){
+    const tap=svgPoint.matrixTransform(ctm.inverse());
+    const cx=Number(targetEl.getAttribute('cx')),cy=Number(targetEl.getAttribute('cy'));
+    const label=board.querySelector('.destination-label');
+    const nearCircle=Math.hypot(tap.x-cx,tap.y-cy)<=44;
+    const nearLabel=label&&Math.abs(tap.x-cx)<=78&&tap.y>=cy-65&&tap.y<=cy-20;
+    if(nearCircle||nearLabel)return{kind:'destination',pos:String(targetEl.dataset.dest)};
+   }
+  }
+ }
+
  const node=target.closest('#board .node');if(node)return{kind:'node',index:[...onlineEl('board').querySelectorAll('.node')].indexOf(node)};
  return null;
 }
 // Guest does not execute game logic; every input is forwarded to the host.
 document.addEventListener('click',e=>{
  if(Online.role!=='guest'||!Online.started)return;
+ // Save coordinates before resolving a touch target in the SVG viewBox.
+ window.__yutLastClickX=e.clientX;window.__yutLastClickY=e.clientY;
  const a=onlineGetAction(e.target);if(!a)return;
  e.preventDefault();e.stopImmediatePropagation();
  if(a.kind!=='vote'&&onlineEl('game').classList.contains('hide'))return;
@@ -142,24 +209,42 @@ document.addEventListener('click',e=>{
 },true);
 function onlineHostAction({seat,action:a}){
  if(Online.role!=='host'||!Online.started||!a||!P.length)return;
- let el=null;
  if(a.kind==='vote'){
-  if(Online.seats[a.index]!==seat||!powerVoteState)return;
-  el=onlineEl('powerVote').querySelector(`button[data-voter="${a.index}"]`);
- }else{
-  if(Online.seats[idx]!==seat||P[idx].ai)return;
-  if(a.kind==='ability'){
-   if((a.power==='y'||a.power==='t')&&phase==='pre')power(a.power);
-   onlineScheduleSync();return;
-  }
-  if(a.kind==='action'&&Number.isInteger(a.index)&&a.index>=0&&a.index<20)el=onlineEl('buttons').querySelector(`#action${a.index}`);
-  else if(a.kind==='pick'&&Number.isInteger(a.index)&&a.index>=0&&a.index<50)el=onlineEl('pieceList').querySelector(`#pick${a.index}`);
-  else if(a.kind==='piece'&&Number.isInteger(a.index)&&a.index>=0&&a.index<4)el=onlineEl('pieceList').querySelector(`#piece${a.index}`);
-  else if(a.kind==='boardPiece'&&a.piece>=0&&a.piece<4&&a.owner>=0&&a.owner<P.length)el=onlineEl('board').querySelector(`.piece-group[data-owner="${a.owner}"][data-piece="${a.piece}"]`);
-  else if(a.kind==='destination')el=onlineEl('board').querySelector('.destination-hit');
-  else if(a.kind==='node'&&Number.isInteger(a.index))el=onlineEl('board').querySelectorAll('.node')[a.index];
+  if(!powerVoteState||Online.seats[a.index]!==seat)return;
+  const b=onlineEl('powerVote').querySelector(`button[data-voter="${a.index}"]`);
+  if(b&&!b.disabled)b.click();onlineScheduleSync();return;
  }
- if(el&&!el.disabled){el.click();onlineScheduleSync()}
+ if(Online.seats[idx]!==seat||P[idx].ai||gameOver)return;
+ // Semantic commands drive the actual engine, not a possibly hidden/disabled mirrored UI element.
+ try{
+  if(a.kind==='ability'){
+   if(['y','t'].includes(a.power)&&phase==='pre')power(a.power);
+  }else if(a.kind==='piece'){
+   if(Number.isInteger(a.index)&&a.index>=0&&a.index<4&&['move','destination'].includes(phase))selectPiece(a.index);
+  }else if(a.kind==='boardPiece'){
+   if(Number.isInteger(a.owner)&&Number.isInteger(a.piece)&&a.owner>=0&&a.owner<P.length&&a.piece>=0&&a.piece<4)onBoardClick(a.owner,a.piece);
+  }else if(a.kind==='destination'){
+   // The host validates the intended destination against the current move.
+   // This prevents stale guest taps from moving a different piece/turn.
+   if(phase==='destination'&&selectedPiece!==null&&currentRoll){
+    const expected=moveCalc(P[idx].pieces[selectedPiece],currentRoll.step);
+    if(expected&&String(expected.pos)===String(a.pos))confirmDestination();
+   }
+  }else if(a.kind==='pick'){
+   if(phase==='choose'&&Number.isInteger(a.index)&&a.index>=0&&a.index<selectionOptions.length)completeSelection(selectionOptions[a.index]);
+  }else if(a.kind==='node'){
+   if(phase==='choose'&&Number.isInteger(a.index)){
+    const nodes=[...onlineEl('board').querySelectorAll('.node')];
+    const node=nodes[a.index];if(node)node.click();
+   }
+  }else if(a.kind==='action'){
+   if(Number.isInteger(a.index)&&a.index>=0&&a.index<20){
+    const b=onlineEl('buttons').querySelector(`#action${a.index}`);
+    if(b&&!b.disabled)b.click();
+   }
+  }
+ }catch(err){console.error('Remote command failed',a,err)}
+ onlineScheduleSync();
 }
 // Original engine remains unchanged. Conceal remote person's cards on the hosting PC.
 const onlineOriginalAbilities=renderAbilities;
