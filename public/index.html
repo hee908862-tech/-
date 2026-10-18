@@ -64,6 +64,62 @@ button:hover:not(:disabled){filter:none;transform:translateY(-2px)}button:active
 </style><style>
 #onlineSection{max-width:760px;margin:0 auto}.net-layout{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}.net-member{display:flex;justify-content:space-between;padding:11px;background:#f7eedf;border-radius:10px;margin:5px 0}.online-room-code{font-size:34px;letter-spacing:7px;font-weight:900;text-align:center;color:#775135;margin:9px}.online-panel{border:1px solid #d3bfa0;background:#fffcf5;border-radius:12px;padding:15px;margin:12px 0}.online-note{font-size:13px;color:#725b48;line-height:1.5}.net-guest.net-spectator #game #buttons button,.net-guest.net-spectator #game #pieceList button,.net-guest.net-spectator #game #abilities button {pointer-events:none;opacity:.5}.net-guest.net-spectator #game .destination-hit,.net-guest.net-spectator #game .piece-group{cursor:default!important} .net-guest.net-spectator #game #buttons button{cursor:default!important}
 @media(max-width:580px){.net-layout{grid-template-columns:1fr}}
+</style><style>
+
+/* v11: 모바일 전용 레이아웃. 기존 게임 로직과 데스크톱 스타일은 유지합니다. */
+@media (max-width: 780px) {
+  html, body { width:100%; max-width:100%; overflow-x:hidden; }
+  .shell { max-width:100%; width:100%; margin:0; padding:12px 10px 22px; }
+  .heading { gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:12px; padding-bottom:10px; }
+  .heading > div:first-child { flex:1 1 125px; min-width:0; }
+  .heading > div:last-child { flex:1 1 100%; justify-content:flex-start; gap:6px !important; }
+  .heading h1 { font-size:clamp(22px,6vw,29px); line-height:1.15; }
+  .heading .eyebrow { font-size:9px; letter-spacing:.08em; }
+  .heading .small {font-size:11px;}
+  .heading button {padding:8px 10px; min-width:0; font-size:12px; border-radius:9px;}
+  #game.layout { display:flex; flex-direction:column; gap:12px; width:100%; min-width:0; }
+  #game .board-center {order:1; width:100%; min-width:0; }
+  #game .side {order:2; width:100%; min-width:0; display:flex; flex-direction:column; gap:10px; grid-column:auto; }
+  #game .sidebar {order:3; width:100%; min-width:0; display:block; }
+  #game .sidebar>.box {position:static; top:auto;}
+  #game .boardbox {padding:6px; border-width:4px; border-radius:14px; margin:auto; width:100%; }
+  #game .board { width:100%; height:auto; max-width:100%; aspect-ratio:1/1; display:block; }
+  #game .board-heading {font-size:14px; padding:10px 6px; margin-bottom:7px; }
+  #game .board-hint {font-size:13px; line-height:1.4; margin-top:7px;}
+  #game .box {padding:12px; min-width:0; width:100%; }
+  #game .throw { padding:12px 10px; }
+  #game .sticks {gap:13px; padding:8px 3px; }
+  #game .stick { width:30px; height:83px; }
+  #game .stick.back:before {top:26px;}
+  #game .throw-result {font-size:23px;}
+  #game .actions {display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); width:100%;}
+  #game .actions button {min-width:0; width:100%; min-height:45px; padding:9px 5px; font-size:14px; }
+  #game .ability-row {grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px;}
+  #game .ability {padding:10px; min-height:85px; }
+  #game .ability strong {font-size:13px;}
+  #game .ability span {font-size:11px;}
+  #game .players {grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px;}
+  #game .player {min-width:0; padding:10px 8px; min-height:105px; }
+  #game .player-top {font-size:13px; gap:4px;}
+  #game .stat {font-size:11px; flex-wrap:wrap;}
+  #game .player-stable {flex-wrap:wrap;}
+  #game .mini-horse {font-size:17px;}
+  #game .pick {grid-template-columns:repeat(2,minmax(0,1fr));}
+  #game .pick button {padding:12px 9px; min-height:44px;}
+  #game .status-ribbon {font-size:14px;}
+  #game .event {font-size:13px; line-height:1.5;}
+  .setup, #onlineSection {margin:8px auto; width:100%; max-width:100%;}
+  .setup h2 {font-size:24px;}
+  .modal {padding:10px;}
+  .modal .box {max-height:88dvh;}
+  #centerNoticeText {min-width:0; font-size:clamp(24px,8vw,45px); padding:13px 17px; max-width:80vw; white-space:normal;}
+}
+@media (max-width: 390px) {
+  #game .players {grid-template-columns:1fr 1fr;}
+  #game .player-top {font-size:12px;}
+  .heading button {padding:7px 8px;font-size:11px;}
+  #game .ability-row {grid-template-columns:1fr;}
+}
 </style></head><body><div class="shell"><header class="heading"><div><div class="eyebrow">SUPERPOWER YUT NORI</div><h1>⚡ 초능력 윷놀이</h1><div class="small">십이간지 팀 배틀 · 초능력 1회씩</div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="secondary" onclick="showSettings()">⚙️ 설정</button><button class="secondary" onclick="showHelp()">📖 규칙</button><button class="secondary" onclick="openOnlinePanel()" id="onlineHeaderButton">🌐 온라인 대전</button><button id="exitBtn" class="danger hide" onclick="exitGame()">🚪 게임 나가기</button></div></header>
 <section id="setup" class="box setup"><h2>🎲 게임방 설정</h2><p class="small">혼자 AI와 대결하거나, 친구들과 같은 기기에서 번갈아 플레이할 수 있습니다.</p>
 <div class="mode-picker" role="group" aria-label="게임 모드">
