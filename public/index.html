@@ -120,6 +120,89 @@ button:hover:not(:disabled){filter:none;transform:translateY(-2px)}button:active
   .heading button {padding:7px 8px;font-size:11px;}
   #game .ability-row {grid-template-columns:1fr;}
 }
+</style><style>
+/* v12: 모바일 한 화면 집중형. 기존 온라인/게임 로직은 변경하지 않음 */
+@media (max-width: 780px) {
+ html,body {max-width:100%;overflow-x:hidden}
+ body:has(#game:not(.hide)) {height:100dvh;overflow:hidden}
+ body:has(#game:not(.hide)) .shell {height:100dvh;display:flex;flex-direction:column;padding:env(safe-area-inset-top, 0px) 8px env(safe-area-inset-bottom, 0px);overflow:hidden}
+ body:has(#game:not(.hide)) .heading {flex:0 0 auto;min-height:0;display:flex;align-items:center;gap:6px;margin:0 0 5px;padding:4px 0 5px;flex-wrap:nowrap}
+ body:has(#game:not(.hide)) .heading>div:first-child {flex:1 1 auto;min-width:0}
+ body:has(#game:not(.hide)) .heading h1 {font-size:16px;white-space:nowrap;margin:0;line-height:1.2}
+ body:has(#game:not(.hide)) .heading .eyebrow,body:has(#game:not(.hide)) .heading .small {display:none}
+ body:has(#game:not(.hide)) .heading>div:last-child {flex:0 0 auto;width:auto;gap:3px!important;flex-wrap:nowrap}
+ body:has(#game:not(.hide)) .heading button {font-size:0;padding:5px 7px;min-height:34px;min-width:34px;line-height:22px}
+ body:has(#game:not(.hide)) #onlineHeaderButton {display:none}
+ body:has(#game:not(.hide)) .heading button::first-letter {font-size:18px}
+ #game.layout:not(.hide) {flex:1 1 0;min-height:0;display:grid!important;grid-template-columns:minmax(0,1fr)!important;grid-template-rows:minmax(0,1fr) auto auto!important;gap:5px!important;width:100%;overflow:hidden}
+ #game .board-center {order:0;grid-row:1;min-height:0;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden}
+ #game .board-heading {width:100%;flex:0 0 auto;font-size:10px;padding:3px 6px;margin-bottom:3px;border-radius:7px;letter-spacing:0}
+ #game .boardbox {height:auto!important;width:min(100%, 44dvh, calc(100dvh - 390px))!important;max-width:100%!important;flex:0 1 auto;min-height:0;aspect-ratio:1/1;padding:3px;border-width:3px;border-radius:9px;box-shadow:0 3px 10px #65452c22;display:flex;justify-content:center;align-items:center}
+ #game .board {max-width:100%;max-height:100%;width:100%!important;height:auto!important;aspect-ratio:1/1;flex:0 0 auto}
+ #game .side {order:0;grid-row:2;min-width:0;display:block;overflow:visible}
+ #game .side>.box {padding:6px 8px;display:flex;flex-direction:column;gap:3px;border-radius:11px;box-shadow:none}
+ #game .side>.box>div:first-child {font-size:12px}
+ #game .side>.box>div:first-child b {font-size:12px}
+ #game .tag{font-size:10px;padding:2px 6px}
+ #game .status-ribbon {font-size:12px;padding:3px 4px;margin:0!important;border-radius:6px}
+ #game .event {font-size:11px;line-height:1.2;padding:3px 6px;min-height:0;max-height:29px;overflow:auto;border-left-width:2px}
+ #game #abilityWrap {margin:1px 0 0}
+ #game #abilityWrap .side-title {display:none}
+ #game .ability-row {display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:5px}
+ #game .ability {min-height:0;padding:5px 7px;border-radius:8px}
+ #game .ability strong {font-size:11px;line-height:1.18;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ #game .ability span {font-size:10px;line-height:1.2;margin-top:2px;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
+ #game .concealed-skills{min-height:0;padding:4px;gap:2px}
+ #game .concealed-skills .conceal-lock{display:none}
+ #game .concealed-skills strong{font-size:11px}
+ #game .concealed-skills>span{display:none}
+ #game .conceal-pills{gap:4px}
+ #game .conceal-pills span{font-size:10px;padding:2px 5px}
+ #game #throwPanel.throw {margin-top:1px!important;padding:4px 7px;min-height:0;display:grid;grid-template-columns:88px minmax(0,1fr);grid-template-rows:auto auto auto;grid-template-areas:'sticks result' 'sticks actions' 'pool pool';align-items:center;column-gap:7px;row-gap:2px;border-radius:9px}
+ #game .throw .bar-title{display:none}
+ #game .sticks{grid-area:sticks;gap:3px;padding:1px;margin:0;justify-content:center;align-items:center;align-self:stretch}
+ #game .stick{width:17px;height:53px;border-width:1px;border-radius:10px}
+ #game .stick.back:before{font-size:15px;left:1px;top:17px}
+ #game .throw-result{grid-area:result;font-size:13px;line-height:1.15;text-align:left;min-height:13px}
+ #game #buttons.actions{grid-area:actions;display:flex;gap:4px;flex-wrap:nowrap;justify-content:stretch;align-items:stretch;width:100%;min-width:0}
+ #game #buttons button{font-size:12px;min-height:34px;min-width:0;padding:5px 7px;flex:1;border-radius:7px}
+ #game #rollPool{grid-area:pool;max-height:35px;overflow-x:auto;flex-wrap:nowrap;justify-content:start;margin:0;padding:0}
+ #game .roll-chip{font-size:11px;padding:3px 6px;white-space:nowrap}
+ #game #pieceWrap{margin-top:3px!important;max-height:82px;overflow-y:auto}
+ #game #pieceWrap>b {font-size:12px}
+ #game #pieceWrap>.small {display:none}
+ #game .pick{grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;margin-top:3px}
+ #game .pick button{padding:5px 4px;min-height:34px;font-size:11px}
+ #game .sidebar{order:0;grid-row:3;display:block!important;min-width:0;overflow:hidden}
+ #game .sidebar>.box {padding:5px 6px;position:static;border-radius:10px;box-shadow:none}
+ #game .sidebar .side-title {display:none}
+ #game .players {grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}
+ #game .player {min-height:0;padding:4px 6px;border-radius:8px;overflow:hidden}
+ #game .player.active:before{display:none}
+ #game .player-top{font-size:11px;gap:2px}
+ #game .zodiac{font-size:15px}
+ #game .player .tag{font-size:9px;padding:2px 4px}
+ #game .player .stat{font-size:10px;margin-top:1px;gap:3px;white-space:nowrap}
+ #game .player .skill-state,#game .player .player-stable{display:none}
+ #game .player .stat span:last-child{display:none}
+}
+@media (max-width: 780px) and (max-height: 710px) {
+ #game.layout:not(.hide) {gap:3px!important}
+ #game .board-heading {display:none}
+ #game .side>.box{padding:4px 7px;gap:2px}
+ #game #abilityWrap .ability span{display:none}
+ #game .sticks .stick{height:45px}
+ #game .throw .stick.back:before{top:13px}
+ #game .event{max-height:22px}
+}
+@media (max-width: 780px) and (orientation:landscape) {
+ body:has(#game:not(.hide)){overflow:auto;height:auto}
+ body:has(#game:not(.hide)) .shell{height:auto;min-height:100dvh;overflow:visible}
+ #game.layout:not(.hide){height:auto;overflow:visible;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;grid-template-rows:auto auto!important;grid-template-areas:'board controls' 'players players'}
+ #game .board-center{grid-area:board;min-height:240px}
+ #game .side{grid-area:controls}
+ #game .sidebar{grid-area:players}
+}
 </style></head><body><div class="shell"><header class="heading"><div><div class="eyebrow">SUPERPOWER YUT NORI</div><h1>⚡ 초능력 윷놀이</h1><div class="small">십이간지 팀 배틀 · 초능력 1회씩</div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="secondary" onclick="showSettings()">⚙️ 설정</button><button class="secondary" onclick="showHelp()">📖 규칙</button><button class="secondary" onclick="openOnlinePanel()" id="onlineHeaderButton">🌐 온라인 대전</button><button id="exitBtn" class="danger hide" onclick="exitGame()">🚪 게임 나가기</button></div></header>
 <section id="setup" class="box setup"><h2>🎲 게임방 설정</h2><p class="small">혼자 AI와 대결하거나, 친구들과 같은 기기에서 번갈아 플레이할 수 있습니다.</p>
 <div class="mode-picker" role="group" aria-label="게임 모드">
